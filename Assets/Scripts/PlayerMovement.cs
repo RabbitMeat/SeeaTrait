@@ -11,6 +11,7 @@ public class PlayerMovement : MonoBehaviour
     float horizontalMove = 0f;
     bool jump = false;
     bool crouch = false;
+    bool dash = false;
 
     // Update is called once per frame
     void Update()
@@ -32,12 +33,21 @@ public class PlayerMovement : MonoBehaviour
             crouch = false;
         }
 
+        if (Input.GetButtonDown("Dash"))
+        {
+            dash = true;
+        }
+        else if (Input.GetButtonUp("Dash"))
+        {
+            dash = false;
+        }
+
     }
 
     void FixedUpdate()
     {
         // Move our character
-        controller.Move(horizontalMove * Time.fixedDeltaTime, crouch, jump);
+        controller.Move(horizontalMove * Time.fixedDeltaTime, crouch, jump, dash);
         jump = false;
     }
 }

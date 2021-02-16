@@ -1,21 +1,27 @@
 // 參考教學：
 // wall sliding & wall jumping: https://www.youtube.com/watch?v=KCzEnKLaaPc
+// dash https://www.youtube.com/watch?v=w4YV8s9Wi3w
 
 using UnityEngine;
 using UnityEngine.Events;
+using System.Collections;
+using System.Collections.Generic;
 
 //需要解決在空中無法二段跳的問題
 public class CharacterController2D : MonoBehaviour
 {
     // m_ prefix for class member, k_ prefix for constant
     [SerializeField] private float m_JumpForce = 800f;                          // Amount of force added when the player jumps.
-    [SerializeField] private float m_xWallForce = 30f;                          // Amount of force added when the player jumping on the wall for x axis.
-    [SerializeField] private float m_yWallForce = 60f;                          // Amount of force added when the player jumping on the wall for y axis.
-    [SerializeField] private float m_WallJumpingTime = .05f;                          // Time limit when the player jumping on the wall.
+    [SerializeField] private float m_xWallForce = 1f;                          // Amount of force added when the player jumping on the wall for x axis.
+    [SerializeField] private float m_yWallForce = 2f;                          // Amount of force added when the player jumping on the wall for y axis.
+    [SerializeField] private float m_WallJumpingTime = .5f;                          // Time limit when the player jumping on the wall.
+    [SerializeField] private float m_DashTime = .05f;                          // Time limit when the player dashes.
+    [SerializeField] private float m_StartDashTime = .5f;                          // Time limit when the player jumping on the wall.
     [Range(0, 1)] [SerializeField] private float m_CrouchSpeed = .36f;          // Amount of maxSpeed applied to crouching movement. 1 = 100%
     [Range(0, 1)] [SerializeField] private float m_WallSlidingSpeed = .3f;          // Amount of maxSpeed applied to sliding wall. 1 = 100%
-    [SerializeField] private float m_WallJumpingSpeed = .6f;          // Amount of maxSpeed applied to sliding wall. 1 = 100%
     [Range(0, .3f)] [SerializeField] private float m_MovementSmoothing = .05f;  // How much to smooth out the movement
+    [SerializeField] private float m_WallJumpingSpeed = .6f;          // Amount of maxSpeed applied to sliding wall. 1 = 100%
+    [SerializeField] private float m_DashSpeed = 12f;          // Amount of maxSpeed applied to dash. 1 = 100%
     [SerializeField] private bool m_AirControl = true;                         // Whether or not a player can steer while jumping;
     [SerializeField] private LayerMask m_WhatIsGround;                          // A mask determining what is ground to the character
     [SerializeField] private Transform m_GroundCheck;                           // A position marking where to check if the player is grounded.
@@ -58,6 +64,8 @@ public class CharacterController2D : MonoBehaviour
 
         if (OnCrouchEvent == null)
             OnCrouchEvent = new BoolEvent();
+
+        m_DashTime = m_StartDashTime;
     }
 
     private void FixedUpdate()
@@ -92,10 +100,10 @@ public class CharacterController2D : MonoBehaviour
     }
 
 
-    public void Move(float move, bool crouch, bool jump)
+    public void Move(float move, bool crouch, bool jump, bool dash)
     {
         // Back to idle animation
-        if (move == 0 && !jump && !crouch)
+        if (move == 0 && !jump && !crouch && !dash)
         {
             AnimControlScript.idle();
         }
@@ -103,7 +111,7 @@ public class CharacterController2D : MonoBehaviour
         {
             AnimControlScript.walking();
         }
-        if (!m_Grounded)
+        if (!m_Grounded && !dash)
         {
             AnimControlScript.jump();
         }
@@ -119,14 +127,14 @@ public class CharacterController2D : MonoBehaviour
         }
 
         //only control the player if grounded or airControl is turned on
-        if (m_Grounded || m_AirControl)
+        if ((m_Grounded || m_AirControl))
         {
             //if (jump)
             //{
             //    AnimControlScript.jump();
             //}
             // If crouching
-            if (crouch)
+            if (crouch && !dash)
             {
                 if (!m_wasCrouching)
                 {
@@ -143,7 +151,7 @@ public class CharacterController2D : MonoBehaviour
                     m_CrouchDisableCollider.enabled = false;
                 }
             }
-            else
+            else if (!crouch)
             {
                 // Enable the collider when not crouching
                 if (m_CrouchDisableCollider != null)
@@ -172,6 +180,30 @@ public class CharacterController2D : MonoBehaviour
             {
                 // ... flip the player.
                 Flip();
+            }
+        }
+
+        // Dash
+        if (move != 0 && dash)
+        {
+            print("dash");
+            if (m_DashTime <= 0)
+            {
+                m_DashTime = m_StartDashTime;
+                m_Rigidbody2D.velocity = Vector2.zero;
+            }
+            else
+            {
+                m_DashTime -= Time.deltaTime;
+
+                if (m_FacingRight)
+                {
+                    m_Rigidbody2D.velocity = Vector2.right * m_DashSpeed;
+                }
+                else
+                {
+                    m_Rigidbody2D.velocity = Vector2.left * m_DashSpeed;
+                }
             }
         }
 

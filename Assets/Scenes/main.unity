@@ -430,10 +430,13 @@ MonoBehaviour:
   m_xWallForce: 1
   m_yWallForce: 2
   m_WallJumpingTime: 0.5
+  m_DashTime: 0.05
+  m_StartDashTime: 0.5
   m_CrouchSpeed: 0.36
   m_WallSlidingSpeed: 0.8
-  m_WallJumpingSpeed: 0.6
   m_MovementSmoothing: 0.05
+  m_WallJumpingSpeed: 0.6
+  m_DashSpeed: 12
   m_AirControl: 1
   m_WhatIsGround:
     serializedVersion: 2
