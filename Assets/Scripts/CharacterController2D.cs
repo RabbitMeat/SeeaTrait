@@ -1,16 +1,26 @@
+// 參考教學：
+// wall sliding & wall jumping: https://www.youtube.com/watch?v=KCzEnKLaaPc
+
 using UnityEngine;
 using UnityEngine.Events;
 
 //需要解決在空中無法二段跳的問題
 public class CharacterController2D : MonoBehaviour
 {
+    // m_ prefix for class member, k_ prefix for constant
     [SerializeField] private float m_JumpForce = 800f;                          // Amount of force added when the player jumps.
+    [SerializeField] private float m_xWallForce = 30f;                          // Amount of force added when the player jumping on the wall for x axis.
+    [SerializeField] private float m_yWallForce = 60f;                          // Amount of force added when the player jumping on the wall for y axis.
+    [SerializeField] private float m_WallJumpingTime = .05f;                          // Time limit when the player jumping on the wall.
     [Range(0, 1)] [SerializeField] private float m_CrouchSpeed = .36f;          // Amount of maxSpeed applied to crouching movement. 1 = 100%
+    [Range(0, 1)] [SerializeField] private float m_WallSlidingSpeed = .3f;          // Amount of maxSpeed applied to sliding wall. 1 = 100%
+    [SerializeField] private float m_WallJumpingSpeed = .6f;          // Amount of maxSpeed applied to sliding wall. 1 = 100%
     [Range(0, .3f)] [SerializeField] private float m_MovementSmoothing = .05f;  // How much to smooth out the movement
     [SerializeField] private bool m_AirControl = true;                         // Whether or not a player can steer while jumping;
     [SerializeField] private LayerMask m_WhatIsGround;                          // A mask determining what is ground to the character
     [SerializeField] private Transform m_GroundCheck;                           // A position marking where to check if the player is grounded.
     [SerializeField] private Transform m_CeilingCheck;                          // A position marking where to check for ceilings
+    [SerializeField] private Transform m_FrontCheck;                           // A position marking where to check if the player meets sth front.
     [SerializeField] private Collider2D m_CrouchDisableCollider;                // A collider that will be disabled when crouching
 
     const float k_GroundedRadius = .2f; // Radius of the overlap circle to determine if grounded
@@ -19,6 +29,10 @@ public class CharacterController2D : MonoBehaviour
     private Rigidbody2D m_Rigidbody2D;
     private bool m_FacingRight = true;  // For determining which way the player is currently facing.
     private Vector3 m_Velocity = Vector3.zero;
+    const float k_FrontCheckRadius = .2f; // Radius of the overlap circle to determine if the player can side on wall.
+    private bool m_TouchingFront;            // Whether or not the player touched something in fornt of him/her.
+    private bool m_WallSliding;            // Whether or not the player is sliding on wall.
+    private bool m_WallJumping;            // Whether or not the player is jumping on wall.
 
     [Header("Events")]
     [Space]
@@ -51,6 +65,7 @@ public class CharacterController2D : MonoBehaviour
 
         bool wasGrounded = m_Grounded;
         m_Grounded = false;
+        m_TouchingFront = false;
 
         // The player is grounded if a circlecast to the groundcheck position hits anything designated as ground
         // This can be done using layers instead but Sample Assets will not overwrite your project settings.
@@ -64,6 +79,16 @@ public class CharacterController2D : MonoBehaviour
                     OnLandEvent.Invoke();
             }
         }
+
+        // For the character to slide down on the wall.
+        colliders = Physics2D.OverlapCircleAll(m_FrontCheck.position, k_FrontCheckRadius, m_WhatIsGround);
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            if (colliders[i].gameObject != gameObject)
+            {
+                m_TouchingFront = true;
+            }
+        } 
     }
 
 
@@ -114,7 +139,9 @@ public class CharacterController2D : MonoBehaviour
 
                 // Disable one of the colliders when crouching
                 if (m_CrouchDisableCollider != null)
+                {
                     m_CrouchDisableCollider.enabled = false;
+                }
             }
             else
             {
@@ -147,8 +174,38 @@ public class CharacterController2D : MonoBehaviour
                 Flip();
             }
         }
+
+        // sliding on the wall
+        if (m_TouchingFront && !m_Grounded && move != 0)
+        {
+            m_WallSliding = true;
+        }
+        else
+        {
+            m_WallSliding = false;
+        }
+
+        if (m_WallSliding)
+        {
+            m_Rigidbody2D.velocity = new Vector2(m_Rigidbody2D.velocity.x, Mathf.Clamp(m_Rigidbody2D.velocity.y, -m_WallSlidingSpeed, float.MaxValue));
+        }
+
+        //jumping on the wall
+        if (jump && m_WallSliding)
+        {
+            m_WallJumping = true;
+            Invoke("SetWallJumpingToFalse", m_WallJumpingTime);
+        }
+
         // If the player should jump...
-        if (m_Grounded && jump)
+        if (!m_TouchingFront) m_WallJumping = false;
+
+        if (m_WallJumping)
+        {
+            print("wall jumping");
+            m_Rigidbody2D.velocity = new Vector2(m_xWallForce * -move * m_WallJumpingSpeed, m_yWallForce);
+        }
+        else if (m_Grounded && jump)
         {
             print("jump");
             // Add a vertical force to the player.
@@ -167,6 +224,8 @@ public class CharacterController2D : MonoBehaviour
             //回地面時二段跳重置
             m_wasDoubleJump = false;
         }
+
+        
     }
 
 
@@ -180,4 +239,16 @@ public class CharacterController2D : MonoBehaviour
         theScale.x *= -1;
         transform.localScale = theScale;
     }
+
+    private void SetWallJumpingToFalse()
+    {
+        m_WallJumping = false;
+    }
+
+    public bool IsGround()
+    {
+        return m_Grounded;
+    }
+
+  
 }

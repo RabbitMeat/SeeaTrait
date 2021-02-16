@@ -62,7 +62,6 @@ public class KnightControl : MonoBehaviour
     }
     public void walking()
     {
-        print("wwwww");
         spineAnimationState.SetAnimation(0, walkAnimationName, true);
     }
     public void idle()
